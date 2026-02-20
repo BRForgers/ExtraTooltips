@@ -1,0 +1,142 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'org.vineflower:vineflower:1.11.2'
+    }
+}
+
+plugins {
+    id 'java'
+    id 'org.jetbrains.gradle.plugin.idea-ext' version '1.3'
+    id 'com.gradleup.shadow' version '9.3.0'
+    id 'maven-publish'
+    id 'net.saliman.properties' version '1.6.0'
+}
+
+boolean ci = System.getenv("CI") == "true"
+
+group = 'one.armelin'
+version = '1.0.0'
+
+def decomp(fileCollection) {
+    def jarFile = fileCollection.singleFile
+
+    if (jarFile.name.endsWith('.jar') && jarFile.exists()) {
+        def decompiled = new File(jarFile.parentFile, jarFile.name.replace('.jar', '-sources.jar'))
+
+        if (!decompiled.exists()) {
+            println "Decompiling ${jarFile.name}..."
+
+            def vineflowerJar = buildscript.configurations.classpath.find { it.name.contains('vineflower') }
+
+            println "Vineflower JAR: ${vineflowerJar}"
+            println "Input: ${jarFile.absolutePath}"
+            println "Output: ${decompiled.absolutePath}"
+
+            def process = new ProcessBuilder(
+                    'java',
+                    '-Xmx10G',
+                    '-cp',
+                    vineflowerJar.absolutePath,
+                    'org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler',
+                    jarFile.absolutePath,
+                    decompiled.absolutePath
+            )
+            process.redirectErrorStream(true)
+
+            def proc = process.start()
+
+            proc.inputStream.eachLine { line ->
+                println "  [Vineflower] ${line}"
+            }
+
+            def exitCode = proc.waitFor()
+            println "Exit code: ${exitCode}"
+            println "Decompiled JAR exists: ${decompiled.exists()}"
+        }
+
+        return files(jarFile)
+    }
+
+    return fileCollection
+}
+
+configurations {
+    create("shade")
+    implementation {
+        extendsFrom(configurations["shade"])
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://jitpack.io' }
+    maven { url 'https://maven.hytale.com/release' }
+    exclusiveContent {
+        forRepository {
+            maven {
+                url "https://cursemaven.com"
+            }
+        }
+        filter {
+            includeGroup "curse.maven"
+        }
+    }
+}
+
+def hytale = ci ? 'com.hypixel.hytale:Server:+' : decomp(files("${project.HytaleInstallDir}/install/release/package/game/latest/Server/HytaleServer.jar"))
+
+dependencies {
+    implementation hytale
+    implementation "curse.maven:dynamictooltipslib-1459711:7638989"
+    implementation 'blue.endless:jankson:1.2.3'
+    shade 'blue.endless:jankson:1.2.3'
+}
+
+tasks.register('updatePluginManifest') {
+    def manifestFile = file('src/main/resources/manifest.json')
+    doLast {
+        if (!manifestFile.exists()) {
+            throw new GradleException("Could not find manifest.json at ${manifestFile.path}!")
+        }
+        def manifestJson = new groovy.json.JsonSlurper().parseText(manifestFile.text)
+        manifestJson.Version = version
+        manifestJson.IncludesAssetPack = includes_pack.toBoolean()
+        manifestFile.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(manifestJson))
+    }
+}
+
+tasks.named('processResources') {
+    dependsOn 'updatePluginManifest'
+}
+
+// Creates a run configuration in IDEA that will run the Hytale server with
+// your plugin and the default assets.
+idea.project.settings.runConfigurations {
+    'HytaleServer'(org.jetbrains.gradle.ext.Application) {
+        mainClass = 'com.hypixel.hytale.Main'
+        moduleName = project.idea.module.name + '.main'
+        programParameters = "--allow-op --disable-sentry --assets=${project.HytaleInstallDir}/install/release/package/game/latest/Assets.zip"
+        if (includes_pack.toBoolean()) {
+            programParameters += " --mods=${sourceSets.main.java.srcDirs.first().parentFile.absolutePath}"
+        }
+        if (load_user_mods.toBoolean()) {
+            programParameters += " --mods=${project.HytaleInstallDir}/UserData/Mods"
+        }
+        workingDirectory = file("${project.ServerDir}").absolutePath
+    }
+}
+
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.shadowJar {
+    archiveClassifier.set('')
+    configurations = [project.configurations.shade]
+    mergeServiceFiles()
+}
