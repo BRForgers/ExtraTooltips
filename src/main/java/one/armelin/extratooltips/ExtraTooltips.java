@@ -3,6 +3,7 @@ package one.armelin.extratooltips;
 import com.hypixel.hytale.logger.HytaleLogger;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
+import one.armelin.extratooltips.providers.CaptureCrateProvider;
 import one.armelin.extratooltips.providers.ModTooltipProvider;
 import one.armelin.extratooltips.providers.SwabTooltipProvider;
 import org.herolias.tooltips.api.DynamicTooltipsApi;
@@ -50,6 +51,7 @@ public class ExtraTooltips extends JavaPlugin {
         }
         tooltipsApi.registerProvider(new ModTooltipProvider());
         tooltipsApi.registerProvider(new SwabTooltipProvider());
+        tooltipsApi.registerProvider(new CaptureCrateProvider());
     }
 
     @Override
