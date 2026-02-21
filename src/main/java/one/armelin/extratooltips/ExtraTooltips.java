@@ -1,16 +1,22 @@
 package one.armelin.extratooltips;
 
+import com.hypixel.hytale.assetstore.AssetPack;
+import com.hypixel.hytale.assetstore.event.LoadedAssetsEvent;
+import com.hypixel.hytale.assetstore.map.DefaultAssetMap;
+import com.hypixel.hytale.common.plugin.PluginManifest;
 import com.hypixel.hytale.logger.HytaleLogger;
+import com.hypixel.hytale.server.core.asset.AssetModule;
+import com.hypixel.hytale.server.core.asset.type.item.config.Item;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import one.armelin.extratooltips.providers.CaptureCrateProvider;
-import one.armelin.extratooltips.providers.ModTooltipProvider;
 import one.armelin.extratooltips.providers.SwabTooltipProvider;
 import org.herolias.tooltips.api.DynamicTooltipsApi;
 import org.herolias.tooltips.api.DynamicTooltipsApiProvider;
 
 import javax.annotation.Nonnull;
 import java.nio.file.Files;
+import java.util.logging.Level;
 
 public class ExtraTooltips extends JavaPlugin {
     private static ExtraTooltips instance;
@@ -20,7 +26,7 @@ public class ExtraTooltips extends JavaPlugin {
 
     public static Configuration config;
 
-    private DynamicTooltipsApi tooltipsApi;
+    private static DynamicTooltipsApi tooltipsApi;
 
     public ExtraTooltips(@Nonnull JavaPluginInit init) {
         super(init);
@@ -49,7 +55,7 @@ public class ExtraTooltips extends JavaPlugin {
             LOGGER.atSevere().log("DynamicTooltipsLib API not available! Is the library installed?");
             return;
         }
-        tooltipsApi.registerProvider(new ModTooltipProvider());
+        getEventRegistry().register(LoadedAssetsEvent.class, Item.class, ExtraTooltips::onItemAssetLoad);
         tooltipsApi.registerProvider(new SwabTooltipProvider());
         tooltipsApi.registerProvider(new CaptureCrateProvider());
     }
@@ -66,5 +72,23 @@ public class ExtraTooltips extends JavaPlugin {
 
     public static ExtraTooltips getInstance() {
         return instance;
+    }
+
+    private static void onItemAssetLoad(LoadedAssetsEvent<String, Item, DefaultAssetMap<String, Item>> event){
+        Level originalLevel = HytaleLogger.get("DynamicTooltipsLib").getLevel();
+        HytaleLogger.get("DynamicTooltipsLib").setLevel(Level.OFF);
+        event.getLoadedAssets().keySet().forEach(id -> {
+            String assetPackId = event.getAssetMap().getAssetPack(id);
+            if (assetPackId == null) return;
+            AssetPack assetPack = AssetModule.get().getAssetPack(assetPackId);
+            if  (assetPack == null) return;
+            PluginManifest manifest = assetPack.getManifest();
+            String modName = manifest.getName();
+            if (modName.equals("Hytale") && !ExtraTooltips.config.showVanillaModLabel) {
+                return; // Skip mod label for vanilla items if disabled in config
+            }
+            tooltipsApi.addGlobalLine(id, "<color is=\"#AAAAAA\"><b>Mod: </b> " + modName + "</color>");
+        });
+        HytaleLogger.get("DynamicTooltipsLib").setLevel(originalLevel);
     }
 }

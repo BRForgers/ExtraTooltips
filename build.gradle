@@ -18,7 +18,7 @@ plugins {
 boolean ci = System.getenv("CI") == "true"
 
 group = 'one.armelin'
-version = '1.1.0'
+version = '1.1.1'
 
 def decomp(fileCollection) {
     def jarFile = fileCollection.singleFile
@@ -90,7 +90,7 @@ def hytale = ci ? 'com.hypixel.hytale:Server:+' : decomp(files("${project.Hytale
 
 dependencies {
     implementation hytale
-    implementation "curse.maven:dynamictooltipslib-1459711:7638989"
+    implementation "curse.maven:dynamictooltipslib-1459711:7657646"
     implementation 'blue.endless:jankson:1.2.3'
     shade 'blue.endless:jankson:1.2.3'
 }

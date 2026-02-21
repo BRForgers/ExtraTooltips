@@ -1,7 +1,7 @@
 {
     "Group": "armelin1",
     "Name": "ExtraTooltips",
-    "Version": "1.1.0",
+    "Version": "1.1.1",
     "Description": "Adds extra tooltips to items.",
     "Authors": [
         {
@@ -11,7 +11,7 @@
     "ServerVersion": "*",
     "Main": "one.armelin.extratooltips.ExtraTooltips",
     "Dependencies": {
-        "org.herolias:DynamicTooltipsLib": ">=1.3.0"
+        "org.herolias:DynamicTooltipsLib": ">=1.4.1"
     },
     "OptionalDependencies": {
         
