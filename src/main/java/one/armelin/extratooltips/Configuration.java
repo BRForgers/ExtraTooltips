@@ -13,6 +13,9 @@ public class Configuration {
     @Comment(value = "Whether to show the mod label for vanilla items (e.g. 'Hytale' for items from the base game).")
     public boolean showVanillaModLabel = true;
 
+    @Comment(value = "Whether to show only the last mod label for items overridden by multiple mods. If false, all mod labels will be shown.")
+    public boolean showOnlyLastMod = false;
+
     /**
      * Load configuration from file or create default if it doesn't exist
      * @return Loaded or default configuration

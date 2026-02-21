@@ -16,6 +16,9 @@ import org.herolias.tooltips.api.DynamicTooltipsApiProvider;
 
 import javax.annotation.Nonnull;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.logging.Level;
 
 public class ExtraTooltips extends JavaPlugin {
@@ -27,6 +30,8 @@ public class ExtraTooltips extends JavaPlugin {
     public static Configuration config;
 
     private static DynamicTooltipsApi tooltipsApi;
+
+    private static HashMap<String, List<String>> modList = new HashMap<>();
 
     public ExtraTooltips(@Nonnull JavaPluginInit init) {
         super(init);
@@ -63,6 +68,22 @@ public class ExtraTooltips extends JavaPlugin {
     @Override
     protected void start() {
         super.start();
+        LOGGER.atInfo().log("Registering mod labels for %d items", modList.size());
+        LOGGER.atInfo().log("Silencing DynamicTooltipsLib logs during mod label registration to avoid log spam");
+        Level originalLevel = HytaleLogger.get("DynamicTooltipsLib").getLevel();
+        HytaleLogger.get("DynamicTooltipsLib").setLevel(Level.OFF);
+        modList.forEach((id, mods) -> {
+            if (!config.showOnlyLastMod){
+                String modWord = mods.size() > 1 ? "Mods" : "Mod";
+                String modName = String.join(" | ", mods);
+                tooltipsApi.addGlobalLine(id, "<color is=\"#AAAAAA\"><b>" + modWord + ": </b> " + modName + "</color>");
+            } else {
+                String modName = mods.getLast();
+                tooltipsApi.addGlobalLine(id, "<color is=\"#AAAAAA\"><b>Mod: </b> " + modName + "</color>");
+            }
+        });
+        LOGGER.atInfo().log("Restoring DynamicTooltipsLib log level");
+        HytaleLogger.get("DynamicTooltipsLib").setLevel(originalLevel);
     }
 
     @Override
@@ -75,8 +96,6 @@ public class ExtraTooltips extends JavaPlugin {
     }
 
     private static void onItemAssetLoad(LoadedAssetsEvent<String, Item, DefaultAssetMap<String, Item>> event){
-        Level originalLevel = HytaleLogger.get("DynamicTooltipsLib").getLevel();
-        HytaleLogger.get("DynamicTooltipsLib").setLevel(Level.OFF);
         event.getLoadedAssets().keySet().forEach(id -> {
             String assetPackId = event.getAssetMap().getAssetPack(id);
             if (assetPackId == null) return;
@@ -87,8 +106,7 @@ public class ExtraTooltips extends JavaPlugin {
             if (modName.equals("Hytale") && !ExtraTooltips.config.showVanillaModLabel) {
                 return; // Skip mod label for vanilla items if disabled in config
             }
-            tooltipsApi.addGlobalLine(id, "<color is=\"#AAAAAA\"><b>Mod: </b> " + modName + "</color>");
+            modList.computeIfAbsent(id, k -> new ArrayList<>()).add(modName);
         });
-        HytaleLogger.get("DynamicTooltipsLib").setLevel(originalLevel);
     }
 }
